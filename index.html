@@ -65,6 +65,10 @@
             z-index: 100;
         }
 
+        aside.sidebar.collapsed {
+            margin-left: calc(-1 * var(--sidebar-width));
+        }
+
         .brand-header {
             padding: 16px 20px;
             display: flex;
@@ -1497,27 +1501,27 @@
             <span style="font-size:0.65rem;color:var(--accent-cyan);">Active (6)</span>
         </div>
         <div class="agents-list" id="agentsList">
-            <div class="agent-pill active" onclick="switchAgent('kjr_copilot')">
+            <div class="agent-pill active" data-agent="kjr_copilot" onclick="switchAgent('kjr_copilot', this)">
                 <div class="agent-icon" style="background:#0284c7;color:#fff"><i class="fa-solid fa-bolt"></i></div>
                 <div><div>KJR Seva Master Copilot</div></div>
             </div>
-            <div class="agent-pill" onclick="switchAgent('deepseek_reasoner')">
+            <div class="agent-pill" data-agent="deepseek_reasoner" onclick="switchAgent('deepseek_reasoner', this)">
                 <div class="agent-icon" style="background:#8b5cf6;color:#fff"><i class="fa-solid fa-brain"></i></div>
                 <div><div>DeepSeek R1 Reasoner</div></div>
             </div>
-            <div class="agent-pill" onclick="switchAgent('code_architect')">
+            <div class="agent-pill" data-agent="code_architect" onclick="switchAgent('code_architect', this)">
                 <div class="agent-icon" style="background:#059669;color:#fff"><i class="fa-solid fa-code"></i></div>
                 <div><div>Full-Stack Developer</div></div>
             </div>
-            <div class="agent-pill" onclick="switchAgent('doc_analyst')">
+            <div class="agent-pill" data-agent="doc_analyst" onclick="switchAgent('doc_analyst', this)">
                 <div class="agent-icon" style="background:#d97706;color:#fff"><i class="fa-solid fa-file-invoice"></i></div>
                 <div><div>Document & PDF Analyst</div></div>
             </div>
-            <div class="agent-pill" onclick="switchAgent('business_writer')">
+            <div class="agent-pill" data-agent="business_writer" onclick="switchAgent('business_writer', this)">
                 <div class="agent-icon" style="background:#ea580c;color:#fff"><i class="fa-solid fa-pen-nib"></i></div>
                 <div><div>Business & Notice Writer</div></div>
             </div>
-            <div class="agent-pill" onclick="switchAgent('translator')">
+            <div class="agent-pill" data-agent="translator" onclick="switchAgent('translator', this)">
                 <div class="agent-icon" style="background:#db2777;color:#fff"><i class="fa-solid fa-language"></i></div>
                 <div><div>Odia & Multi-Lang Hub</div></div>
             </div>
@@ -1657,10 +1661,10 @@
 
                 <div class="input-actions-bar">
                     <div class="input-tools">
-                        <button class="tool-btn" title="Upload Document / Text File" onclick="document.getElementById('fileInput').click()">
+                        <label for="fileInput" class="tool-btn" title="Upload Document / Text File" style="cursor:pointer;display:inline-flex;">
                             <i class="fa-solid fa-paperclip"></i>
-                        </button>
-                        <input type="file" id="fileInput" style="display:none;" onchange="handleFileUpload(event)" accept=".txt,.json,.js,.py,.html,.csv,.md">
+                        </label>
+                        <input type="file" id="fileInput" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;" onchange="handleFileUpload(event)" accept=".txt,.json,.js,.py,.html,.csv,.md">
                         
                         
                         <!-- JARVIS VISUAL TOOLS -->
@@ -1670,10 +1674,10 @@
                         <button class="tool-btn" title="🖥️ Screen Capture & Inspect" onclick="captureScreenVision()">
                             <i class="fa-solid fa-desktop" style="color:#60a5fa"></i>
                         </button>
-                        <button class="tool-btn" title="🖼️ Upload Photo / Image" onclick="document.getElementById('imageFileInput').click()">
+                        <label for="imageFileInput" class="tool-btn" title="🖼️ Upload Photo / Image" style="cursor:pointer;display:inline-flex;">
                             <i class="fa-regular fa-image" style="color:#a78bfa"></i>
-                        </button>
-                        <input type="file" id="imageFileInput" style="display:none;" onchange="handleImageFileUpload(event)" accept="image/*">
+                        </label>
+                        <input type="file" id="imageFileInput" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;" onchange="handleImageFileUpload(event)" accept="image/*">
                         <button class="tool-btn" title="Start Voice Input into Box" onclick="toggleInputSpeech()">
                             <i class="fa-solid fa-microphone" id="inputMicIcon"></i>
                         </button>
@@ -1739,7 +1743,7 @@
     </div>
 
     <!-- ===== GST CALCULATOR MODAL ===== -->
-    <div class="modal-overlay" id="gstModal">
+    <div class="modal-overlay" id="gstModal" onclick="if(event.target===this)closeGstCalculator()">
         <div class="modal-card">
             <div class="modal-header">
                 <div class="modal-title">
@@ -1803,7 +1807,7 @@
     </div>
 
     <!-- ===== API KEY MODAL ===== -->
-    <div class="modal-overlay" id="keyModal">
+    <div class="modal-overlay" id="keyModal" onclick="if(event.target===this)closeKeyModal()">
         <div class="modal-card">
             <div class="modal-header">
                 <div class="modal-title">
@@ -1915,12 +1919,23 @@
         async function openCameraVisionModal() {
             const modal = document.getElementById('cameraVisionModal');
             const video = document.getElementById('cameraFeedVideo');
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert("Camera API is not supported in this browser environment. If testing locally, open via https:// or use the 🖼️ Image Upload button.");
+                return;
+            }
             try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+                // Try mobile-friendly environment camera first
+                try {
+                    cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { facingMode: { ideal: "environment" } } 
+                    });
+                } catch(e) {
+                    cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                }
                 video.srcObject = cameraStream;
                 modal.style.display = 'flex';
             } catch (err) {
-                alert("Camera access denied or unavailable: " + err.message);
+                alert("Camera unavailable: " + err.message + "\nTip: You can use the 🖼️ Image Upload button to attach any photo!");
             }
         }
 
@@ -1957,6 +1972,10 @@
         }
 
         async function captureScreenVision() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                alert("Screen capture is designed for Desktop computers.\n\nOn mobile phones, please tap the 📸 Camera button to snap a photo or 🖼️ Image button to pick an image.");
+                return;
+            }
             try {
                 const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
                 const video = document.createElement('video');
@@ -2087,20 +2106,30 @@
             runGstCalculation();
         };
 
-        // AGENT SWITCHING
-        function switchAgent(agentId) {
+        // AGENT SWITCHING (ROBUST WITH NO EVENT CRASH)
+        function switchAgent(agentId, element) {
             currentAgentId = agentId;
             closeSidebarOnMobile();
             const ag = AGENTS[agentId];
-            
-            document.querySelectorAll('.agent-pill').forEach(p => p.classList.remove('active'));
-            event.currentTarget.classList.add('active');
+            if (!ag) return;
 
-            document.getElementById('currentAgentName').innerText = ag.name;
-            document.getElementById('currentAgentDesc').innerText = ag.desc;
+            document.querySelectorAll('.agent-pill').forEach(p => p.classList.remove('active'));
+            if (element && element.classList) {
+                element.classList.add('active');
+            } else {
+                const found = document.querySelector(`[data-agent="${agentId}"]`);
+                if (found) found.classList.add('active');
+            }
+
+            const nameEl = document.getElementById('currentAgentName');
+            const descEl = document.getElementById('currentAgentDesc');
             const av = document.getElementById('currentAgentAvatar');
-            av.style.background = ag.avatarBg;
-            av.innerHTML = `<i class="${ag.icon}"></i>`;
+            if (nameEl) nameEl.innerText = ag.name;
+            if (descEl) descEl.innerText = ag.desc;
+            if (av) {
+                av.style.background = ag.avatarBg;
+                av.innerHTML = `<i class="${ag.icon}"></i>`;
+            }
         }
 
         // CHAT CREATION & HISTORY
@@ -2162,6 +2191,13 @@
                 // Parse DeepSeek <think> reasoning tags into collapsible accordion
                 let parsedContent = content;
                 const thinkMatch = content.match(/<think>([\s\S]*?)<\/think>/i);
+                function safeParseMarkdown(raw) {
+                    if (typeof marked !== 'undefined' && marked && marked.parse) {
+                        try { return marked.parse(raw); } catch(e) {}
+                    }
+                    return raw.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+                }
+
                 if (thinkMatch) {
                     const thoughts = thinkMatch[1].trim();
                     const cleanAnswer = content.replace(/<think>[\s\S]*?<\/think>/i, '').trim();
@@ -2170,9 +2206,9 @@
                             <summary><i class="fa-solid fa-brain"></i> Reasoning & Thought Steps (${Math.round(thoughts.length / 5)} words)</summary>
                             <div class="thought-content">${thoughts}</div>
                         </details>
-                    ` + marked.parse(cleanAnswer);
+                    ` + safeParseMarkdown(cleanAnswer);
                 } else {
-                    bubble.innerHTML = marked.parse(content);
+                    bubble.innerHTML = safeParseMarkdown(content);
                 }
 
                 // Add 1-click Copy button to any pre code blocks
@@ -2243,7 +2279,10 @@
         // SEND MESSAGE & MODEL DISPATCH
         async function sendMessage(customPrompt = '') {
             const input = document.getElementById('chatInput');
-            const text = (customPrompt || input.value).trim();
+            let text = (customPrompt || input.value || '').trim();
+            if (!text && attachedImageBase64) {
+                text = "Please visually analyze and explain this attached image.";
+            }
             if (!text || isGenerating) return;
 
             if (!customPrompt) {
@@ -2675,11 +2714,19 @@
 
             recognition.onerror = function(event) {
                 console.warn("Speech recognition notice:", event.error);
+                if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                    stopCallSpeechRecognition();
+                    document.getElementById('callStatusText').innerHTML = '<i class="fa-solid fa-microphone-slash"></i> <span>Mic permission needed. Tap Mute to retry.</span>';
+                }
             };
 
             recognition.onend = function() {
-                if (inCallMode && !isSpeaking && !isCallMuted) {
-                    try { recognition.start(); } catch(e) {}
+                if (inCallMode && !isSpeaking && !isCallMuted && isListening) {
+                    setTimeout(() => {
+                        if (inCallMode && !isSpeaking && !isCallMuted) {
+                            try { recognition.start(); } catch(e) {}
+                        }
+                    }, 400);
                 }
             };
 
@@ -2880,9 +2927,11 @@
         function toggleSidebar() {
             const sb = document.getElementById('sidebar');
             const backdrop = document.getElementById('sidebarBackdrop');
-            sb.classList.toggle('open');
-            if (backdrop) {
-                backdrop.classList.toggle('active', sb.classList.contains('open'));
+            if (window.innerWidth <= 768) {
+                sb.classList.toggle('open');
+                if (backdrop) backdrop.classList.toggle('active', sb.classList.contains('open'));
+            } else {
+                sb.classList.toggle('collapsed');
             }
         }
 
@@ -2890,7 +2939,7 @@
             if (window.innerWidth <= 768) {
                 const sb = document.getElementById('sidebar');
                 const backdrop = document.getElementById('sidebarBackdrop');
-                sb.classList.remove('open');
+                if (sb) sb.classList.remove('open');
                 if (backdrop) backdrop.classList.remove('active');
             }
         }
@@ -2971,7 +3020,7 @@
     </script>
 
     <!-- ===== LIVE CAMERA VISION MODAL ===== -->
-    <div class="camera-vision-modal" id="cameraVisionModal">
+    <div class="camera-vision-modal" id="cameraVisionModal" onclick="if(event.target===this)closeCameraVisionModal()">
         <div class="camera-box-wrap">
             <video id="cameraFeedVideo" autoplay playsinline muted></video>
             <div class="camera-hud-overlay">
